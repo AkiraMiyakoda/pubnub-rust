@@ -6,6 +6,8 @@
 //!
 //! It requires the [`reqwest` feature] to be enabled.
 //!
+//! Negotiates HTTP/2 when the origin supports it; otherwise uses HTTP/1.1.
+//!
 //! [`TransportReqwest`]: ./struct.TransportReqwest.html
 //! [`PubNub API`]: https://www.pubnub.com/docs
 //! [`reqwest`]: https://docs.rs/reqwest
@@ -37,7 +39,7 @@ use crate::{
     PubNubClientBuilder,
 };
 use bytes::Bytes;
-use log::info;
+use log::{debug, info};
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderName, InvalidHeaderValue},
     StatusCode,
@@ -83,6 +85,8 @@ impl Transport for TransportReqwest {
         );
 
         let headers = prepare_headers(&request.headers)?;
+        let method = request.method.clone();
+        let path = request.path.clone();
         #[cfg(feature = "std")]
         let timeout = request.timeout;
 
@@ -116,6 +120,10 @@ impl Transport for TransportReqwest {
 
         let headers = result.headers().clone();
         let status = result.status();
+        debug!(
+            "Request completed: method={method} path={path} protocol={:?}",
+            result.version()
+        );
         result
             .bytes()
             .await
@@ -341,6 +349,8 @@ pub mod blocking {
     //!
     //! It requires the [`reqwest` and `blocking` feature] to be enabled.
     //!
+    //! Negotiates HTTP/2 when the origin supports it; otherwise uses HTTP/1.1.
+    //!
     //! [`TransportReqwest`]: ./struct.TransportReqwest.html
     //! [`PubNub API`]: https://www.pubnub.com/docs
     //! [`reqwest`]: https://docs.rs/reqwest
@@ -368,7 +378,7 @@ pub mod blocking {
         transport::reqwest::{create_result, extract_headers, prepare_headers, prepare_url},
         PubNubClientBuilder,
     };
-    use log::info;
+    use log::{debug, info};
 
     /// This struct is used to send requests to the [`PubNub API`] using the
     /// [`reqwest`] crate. It is used as the transport type for the
@@ -407,6 +417,8 @@ pub mod blocking {
                 request.method, request.headers, request_url
             );
             let headers = prepare_headers(&request.headers)?;
+            let method = request.method.clone();
+            let path = request.path.clone();
             #[cfg(feature = "std")]
             let timeout = request.timeout;
 
@@ -439,6 +451,10 @@ pub mod blocking {
 
             let headers = result.headers().clone();
             let status = result.status();
+            debug!(
+                "Request completed: method={method} path={path} protocol={:?}",
+                result.version()
+            );
             result
                 .bytes()
                 .map_err(|e| PubNubError::Transport {
